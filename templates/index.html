@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    
+    <h1 style="font-family:Arial, sans-serif; text-align: center;color: #0707fd;">Welcome to Hilinski World!!</h1>
+
+    <style>
+    img {
+        max-width: 100%; /* Ensures the image doesn't exceed the width of its container */
+        height: auto;    /* Maintains the image's aspect ratio */
+        display: block;  /* Removes extra space below the image */
+    }
+    .highlight-text {
+    
+    color: #0707fd; /* Red color using hexadecimal code */
+    font-weight: bold; /* Makes the text bold */
+    }
+    </style>
+<body>
+
+<img src="{{ url_for('static', filename='uploads/images/IMG_2296.jpg')}}" alt="Home Page Image" />
+</body>
+</html>
+
+
+
+    <h3 class="highlight-text" style="font-family:Arial, sans-serif;text-align: center;">
+        Explore the Site to See Items related to Hilinski World</h3>
+
+    <h4 style="font-family:Arial, sans-serif; text-align: center; color: #0707fd;">joe.tech.bits@gmail.com </h4>
+{% endblock %}
