@@ -220,22 +220,43 @@ def adele():
     # Display Adele Gallery
     # Get list of image files in the upload folder
     
-    upload_path = os.path.join(app.config['UPLOAD_FOLDER_BASE'], 'adele')
-    images = [f for f in os.listdir(upload_path)]
+    image_folder = os.path.join(app.static_folder, 'uploads', 'adele')
+    images = os.listdir(image_folder)
+    images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
     return render_template('adele.html', images=images)
     
 
 @app.route('/crafts')
 def crafts():
     # Display Adele Crafts
-    images = [f for f in os.listdir(os.path.join(app.config['UPLOAD_FOLDER_BASE'], 'crafts'))] 
+    '''images = [f for f in os.listdir(os.path.join(app.config['UPLOAD_FOLDER_BASE'], 'crafts'))] 
+    return render_template('crafts.html', images=images)'''
+    
+    image_folder = os.path.join(app.static_folder, 'uploads', 'crafts')
+    images = os.listdir(image_folder)
+    images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
     return render_template('crafts.html', images=images)
 
 @app.route('/samantha')
 def samantha():
     # Get list of image files in the upload folder
-    images = [f for f in os.listdir(os.path.join(app.config['UPLOAD_FOLDER_BASE'], 'samantha'))]  
+    '''images = [f for f in os.listdir(os.path.join(app.config['UPLOAD_FOLDER_BASE'], 'samantha'))]  
+    return render_template('samantha.html', images=images)'''
+    
+    image_folder = os.path.join(app.static_folder, 'uploads', 'samantha')
+    images = os.listdir(image_folder)
+    images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
     return render_template('samantha.html', images=images)
+
+@app.route('/philly')
+def philly():
+    # Display Philly Gallery
+    # Get list of image files in the upload folder
+    
+    image_folder = os.path.join(app.static_folder, 'uploads', 'philly')
+    images = os.listdir(image_folder)
+    images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
+    return render_template('philly.html', images=images)
 
     
 @app.route('/delete/<page>/<filename>', methods=['POST'])

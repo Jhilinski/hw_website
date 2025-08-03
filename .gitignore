@@ -1,2 +1,5 @@
-.venv
-static/uploads/*.*
+myenv/
+static/uploads/adele/
+static/uploads/crafts/
+static/uploads/samantha/
+static/uploads/
