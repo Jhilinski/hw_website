@@ -3,7 +3,8 @@
 {% block content %}
     <br/>
 
-        <h2>You Searched For: <em>{{ searched }}</em></h2>
+        <!-- <h2>You Searched For: <em>{{ searched }}</em></h2> -->
+        <h2>You Searched For: <em>{{ search }}</em></h2>
 
         <br/>
 
@@ -35,7 +36,9 @@
         {% endfor %}
 
         {% else %}
-        Sorry, your search term: <strong>{{ searched }}</strong> was not found...
+        <!-- Sorry, your search term: <strong>{{ searched }}</strong> was not found... -->
+        Sorry, your search term: <strong>{{ search }}</strong> was not found...
+
 
         {% endif %}
 

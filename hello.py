@@ -12,6 +12,9 @@ from flask_ckeditor import CKEditor
 from werkzeug.utils import secure_filename
 import uuid as uuid
 import os
+from flask_wtf import FlaskForm
+from wtforms import StringField, PasswordField, SubmitField
+from wtforms.validators import DataRequired
 
 # Create a Flask Instance
 app = Flask(__name__)
@@ -65,8 +68,15 @@ def load_user(user_id):
 # Pass Stuff To Navbar
 @app.context_processor
 def base():
-    form = SearchForm()
-    return dict(form=form)
+    search_form = SearchForm()
+    return dict(search_form=search_form)
+
+
+
+
+
+
+
 
 # Create Admin Page
 @app.route('/admin')
@@ -86,32 +96,41 @@ def search():
     posts = Posts.query
     if form.validate_on_submit():
         # Get data from submitted form
-        post.searched = form.searched.data
+        ##post.searched = form.searched.data
+        post.searched = form.search.data
         # Query the Database
         posts = posts.filter(Posts.content.like('%' + post.searched + '%'))
         posts = posts.order_by(Posts.title).all()
         return render_template("search.html", 
         form=form, 
-        searched = post.searched,
+        ##searched = post.searched,
+        search = post.searched,
         posts = posts)
 
 # Create Login Page
+    
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
+    search_form = SearchForm()  # only include if used in layout
     if form.validate_on_submit():
         user = Users.query.filter_by(username=form.username.data).first()
         if user:
-            # Check the hash
             if check_password_hash(user.password_hash, form.password.data):
                 login_user(user)
-                flash("Login successful!!")
+                flash("Login successful!", "success")
                 return redirect(url_for('dashboard'))
             else:
-                flash("Wrong Password - Try Again!")
+                flash("Wrong Password - Try Again!", "danger")
         else:
-            flash("That User Doesn't Exist! Try Again...")
-    return render_template('login.html', form = form)
+            flash("That User Doesn't Exist! Try Again...", "danger")
+    else:
+        if request.method == 'POST':
+            print("Form Errors:", form.errors)
+
+    return render_template('login.html', form=form, search_form=search_form)
+
+
 
 # Create Logout Page
 @app.route('/logout', methods=['GET', 'POST'])
@@ -135,7 +154,7 @@ def dashboard():
         name_to_update.email = request.form['email']
         name_to_update.favorite_color = request.form['favorite_color']
         name_to_update.username = request.form['username']
-        name_to_update.about_author = request.form['about_author']
+        #name_to_update.about_author = request.form['about_author']
 
         # Handle profile picture upload
         if 'profile_pic' in request.files:
@@ -258,6 +277,16 @@ def philly():
     images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
     return render_template('philly.html', images=images)
 
+@app.route('/redhook')
+def redhook():
+    # Display Redhook Gallery
+    # Get list of image files in the upload folder
+    
+    image_folder = os.path.join(app.static_folder, 'uploads', 'redhook')
+    images = os.listdir(image_folder)
+    images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
+    return render_template('redhook.html', images=images)
+
     
 @app.route('/delete/<page>/<filename>', methods=['POST'])
 @login_required
@@ -348,7 +377,7 @@ def add_post():
         # Clear the Form
         form.title.data = ''
         form.content.data = ''
-        #form.author.data = ''
+        form.author.data = ''
         #form.slug.data = ''
         
         # Add Post Data to Database
@@ -399,7 +428,7 @@ def delete(id):
             our_users=our_users)
     else:
         flash ("Sorry, you can't delete that user!")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('dashboard'), form=form)
     
 # Update Database Record
 @app.route('/update/<int:id>', methods=['GET', 'POST'])
@@ -433,31 +462,59 @@ def update(id):
 
 
 
-@app.route('/user/add', methods=['GET','POST'])
+
+@app.route('/user/add', methods=['GET', 'POST'])
 def add_user():
     name = None
     form = UserForm()
+    
     if form.validate_on_submit():
-        user = Users.query.filter_by(email=form.email.data).first()
-        if user is None:
-            # Hash the password!!
-            hashed_pw = generate_password_hash(form.password_hash.data,  method='pbkdf2:sha256')
-            user = Users(username=form.username.data, name=form.name.data, email=form.email.data, favorite_color=form.favorite_color.data, password_hash=hashed_pw)
-            db.session.add(user)
-            db.session.commit()
+        # Check for duplicate email
+        user_by_email = Users.query.filter_by(email=form.email.data).first()
+
+        # Check for duplicate username
+        user_by_username = Users.query.filter_by(username=form.username.data).first()
+
+        if user_by_email:
+            flash("Email is already registered. Please use a different email or login.", "danger")
+            return redirect(url_for('add_user'))
+
+        if user_by_username:
+            flash("Username already exists. Please choose a different one.", "danger")
+            return redirect(url_for('add_user'))
+
+        # Hash the password
+        hashed_pw = generate_password_hash(form.password_hash.data, method='pbkdf2:sha256')
+
+        # Create new user
+        user = Users(
+            username=form.username.data,
+            name=form.name.data,
+            email=form.email.data,
+            favorite_color=form.favorite_color.data,
+            password_hash=hashed_pw
+        )
+        db.session.add(user)
+        db.session.commit()
+
         name = form.name.data
+
+        # Clear form fields
         form.name.data = ''
         form.username.data = ''
         form.email.data = ''
         form.favorite_color.data = ''
-        form.password_hash =''
-        flash("User Added Successfully!")
+        form.password_hash.data = ''  # Fix: use `.data`
+
+        flash("User Added Successfully!", "success")
+
     our_users = Users.query.order_by(Users.date_added)
+
     return render_template("add_user.html",
-        form=form,
-        name=name,
-        our_users=our_users)
-    
+                        form=form,
+                        name=name,
+                        our_users=our_users)
+
 
 # Create a route decorator
 @app.route('/')

@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Philly Memories</title>
+    <title>Redhook Memories</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -93,7 +93,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Philly Memories</h1>
+        <h1>Redhook Memories</h1>
         <p>Welcome {{ current_user.username }}</p>
     </div>
     {% if current_user.is_authenticated %}
@@ -133,11 +133,11 @@
     <div class="gallery">
         {% for image in images %}
             <div class="gallery-item">
-                <a href="{{ url_for('view_photo', page='philly', filename=image) }}">
-                    <img src="{{ url_for('static', filename='uploads/philly/' + image) }}" alt="{{ image }}">
+                <a href="{{ url_for('view_photo', page='redhook', filename=image) }}">
+                    <img src="{{ url_for('static', filename='uploads/redhook/' + image) }}" alt="{{ image }}">
                 </a>
                 {% if current_user.id == 25 %}
-                <form action="{{ url_for('delete_file', page='philly', filename=image) }}" method="post" onsubmit="return confirm('Are you sure you want to delete this photo?');">
+                <form action="{{ url_for('delete_file', page='redhook', filename=image) }}" method="post" onsubmit="return confirm('Are you sure you want to delete this photo?');">
                     <!-- <input type="password" name="page_password" placeholder="Enter password" required> -->
                     <button type="submit" class="delete-button">Delete</button> 
                 {% endif %}

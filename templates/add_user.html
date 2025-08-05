@@ -2,93 +2,49 @@
 
 {% block content %}
 
-{% for message in get_flashed_messages() %}
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ message }}
+{% for message in get_flashed_messages(with_categories=true) %}
+    <div class="alert alert-{{ message[0] }} alert-dismissible fade show" role="alert">
+        {{ message[1] }}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-
 {% endfor %}
 
-{% if name %}
-	<h1>User Added!</h1>
-<br/><br/><br/>
-<table class ="table table-hover table-bordered table-striped">
-{% for our_user in our_users %}
-    <tr>
-    <td>{{ our_user.id }}. <a href="{{url_for('update', id=our_user.id)}}">
-        {{ our_user.name }}</a> - {{ our_user.email }} - 
-        {{ our_user.favorite_color }} - <a href="{{url_for('delete', id=our_user.id)}}">
-        Delete</a></td></tr>
-{% endfor %}
-</table>
-{% else %}
-    <h1>User List:</h1>
-    <br/>
-
+<h1>Add User</h1>
+<br/>
 <div class="shadow p-3 mb-5 bg-body-tertiary rounded">
     <form method="POST">
         {{ form.hidden_tag() }}
-
-        {{ form.name.label(
-        class="form-label") }}
-
-        {{ form.name(
-        class="form-control") }}
-        <br/>
-
-        {{ form.username.label(
-        class="form-label") }}
-
-        {{ form.username(
-        class="form-control") }}
-        <br/>
-
-        {{ form.email.label(
-        class="form-label") }}
-
-        {{ form.email(
-        class="form-control") }}
-
-        <br/>
-
-        {{ form.favorite_color.label(
-        class="form-label") }}
-
-        {{ form.favorite_color(
-        class="form-control") }}
-
-        <br/>
-        {{ form.password_hash.label(
-        class="form-label") }}
-
-        {{ form.password_hash(
-        class="form-control") }}
-        <br/>
-
-        {{ form.password_hash2.label(
-        class="form-label") }}
-
-        {{ form.password_hash2(
-        class="form-control") }}
-        <br/>
-        {{ form.submit(
-        class="btn btn-primary") }}
-
+        {% for field in form if field.name not in ['csrf_token', 'submit'] %}
+            <div class="mb-3">
+                {{ field.label(class="form-label") }}
+                {{ field(class="form-control", placeholder=field.label.text) }}
+                {% if field.errors %}
+                    <div class="alert alert-danger mt-2">
+                        {% for error in field.errors %}
+                            <span>{{ error }}</span><br>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        {{ form.submit(class="btn btn-primary") }}
     </form>
 </div>
-<br/><br/><br/>
-<table class ="table table-hover table-bordered table-striped">
-{% for our_user in our_users %}
-    <tr>
-    <td>{{ our_user.id }}. <a href="{{url_for('update', id=our_user.id)}}">
-        {{ our_user.name }}</a> - {{our_user.username}} - {{ our_user.email }} - 
-        {{ our_user.favorite_color }} - 
-        <a href="{{url_for('delete', id=our_user.id)}}">
-        Delete</a></td></tr>
-{% endfor %}
-</table>
 
-{% endif %}
+<h2>User List</h2>
+<table class="table table-hover table-bordered table-striped">
+    {% for our_user in our_users %}
+        <tr>
+            <td>
+                {{ our_user.id }}. 
+                <a href="{{ url_for('update', id=our_user.id) }}">{{ our_user.name }}</a> - 
+                {{ our_user.username }} - 
+                {{ our_user.email }} - 
+                {{ our_user.favorite_color }} - 
+                <a href="{{ url_for('delete', id=our_user.id) }}">Delete</a>
+            </td>
+        </tr>
+    {% endfor %}
+</table>
 
 {% endblock %}
