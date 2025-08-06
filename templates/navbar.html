@@ -85,22 +85,24 @@
 
         @media (max-width: 768px) {
             .checkbtn {
-                display: block;
-                order: 1;
-            }
+            display: block;
+            order: 1;
+    }
 
-            .navbar-menu {
-                position: fixed;
-                top: 60px;
-                right: -100%;
-                background-color: #333;
-                width: 100%;
-                height: 100vh;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                transition: right 0.3s;
-            }
+        .navbar-menu {
+            position: fixed;
+            top: 60px; /* below the navbar */
+            right: -100%;
+            width: 100%;
+            height: calc(100vh - 60px); /* full height minus navbar */
+            background-color: #333;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            overflow-y: auto; /* ✅ allow scroll if needed */
+            transition: right 0.3s;
+            z-index: 1000; /* ✅ make sure it's on top */
+        }
 
             .navbar-menu li {
                 margin: 20px 0;
@@ -108,7 +110,9 @@
 
             .navbar-menu a {
                 font-size: 1.5rem;
-            }
+                color: white; /* ✅ ensure text is visible */
+                text-decoration: none;
+    }
 
             .navbar-form {
                 margin: 20px 0;
