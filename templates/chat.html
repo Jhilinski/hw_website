@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Chat</h2>
+    <div id="chat-container" style="border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll;">
+        {% for message in messages %}
+        <p><strong>{{ message.sender.username }}</strong> ({{ message.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}): {{ message.message }}</p>
+        {% endfor %}
+    </div>
+    <form id="chat-form" style="margin-top: 10px;">
+        <div class="input-group">
+            <input type="text" id="message-input" class="form-control" placeholder="Type a message..." required>
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary">Send</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Include Socket.IO client library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+    const socket = io();
+
+    // Scroll to the bottom of the chat container
+    const chatContainer = document.getElementById('chat-container');
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+
+    // Handle form submission
+    document.getElementById('chat-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const messageInput = document.getElementById('message-input');
+        const message = messageInput.value.trim();
+        if (message) {
+            socket.emit('send_message', { message: message });
+            messageInput.value = '';
+        }
+    });
+
+    // Handle receiving messages
+    socket.on('receive_message', (data) => {
+        const messageElement = document.createElement('p');
+        messageElement.innerHTML = `<strong>${data.username}</strong> (${data.timestamp}): ${data.message}`;
+        chatContainer.appendChild(messageElement);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    });
+</script>
+{% endblock %}

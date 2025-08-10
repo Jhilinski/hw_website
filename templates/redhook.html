@@ -117,7 +117,7 @@
     
     <!-- Upload form -->
     <div class="upload-form">
-    <form action="{{ url_for('upload_file', page='philly') }}" method="post" enctype="multipart/form-data">
+    <form action="{{ url_for('upload_file', page='redhook') }}" method="post" enctype="multipart/form-data">
     {% if current_user.id == 25 %}  
     <input type="file" name="file">
     <!-- <input type="password" name="page_password" placeholder="Enter password" required> -->

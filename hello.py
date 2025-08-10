@@ -2,7 +2,6 @@ from flask import Flask, render_template, flash, request, redirect, url_for, sen
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import desc
 from flask_migrate import Migrate
-#from sqlalchemy.orm import DeclarativeBase
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import date
@@ -15,48 +14,35 @@ import os
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired
+from flask_socketio import SocketIO, emit, join_room, leave_room  # Add SocketIO imports
 
 # Create a Flask Instance
 app = Flask(__name__)
 ckeditor = CKEditor(app)
-# Add Database
-
-# Old SQLite DB
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///our_users.db'
+socketio = SocketIO(app)  # Initialize Flask-SocketIO
 
 # New MySQL DB
-# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://username:password@localhost/db_name'
+#app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:3221Redhook#@localhost/our_users'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:3221Redhook#@localhost/our_users'
-
-# Secret Key!
 app.config['SECRET_KEY'] = "My Secret Key"
-dir
+app.config['UPLOAD_FOLDER_BASE'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static/uploads')
+app.config['UPLOAD_FOLDER'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static/uploads/images')
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+VIDEO_FOLDER = os.path.join('static', 'Uploads', 'videos')
 
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-#UPLOAD_FOLDER = 'static/uploads/images/'
 
-
-
-
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-app.config['UPLOAD_FOLDER_BASE'] = os.path.join(BASE_DIR, 'static/uploads')
-app.config['UPLOAD_FOLDER'] = os.path.join(BASE_DIR, 'static/uploads/images')
-
-
-# Ensure the upload folder exists
-#if not os.path.exists(UPLOAD_FOLDER):
-    #os.makedirs(UPLOAD_FOLDER)
-    
-    
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS   
+    
 
 # Initialize The Database
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Flask_Login Stuff
+# Flask_Login Configuration
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -70,13 +56,6 @@ def load_user(user_id):
 def base():
     search_form = SearchForm()
     return dict(search_form=search_form)
-
-
-
-
-
-
-
 
 # Create Admin Page
 @app.route('/admin')
@@ -287,6 +266,16 @@ def redhook():
     images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
     return render_template('redhook.html', images=images)
 
+@app.route('/videos')
+def video_gallery():
+    # Get list of video files in the folder
+    video_files = []
+    if os.path.exists(VIDEO_FOLDER):
+        for file in os.listdir(VIDEO_FOLDER):
+            if file.lower().endswith(('.mp4', '.webm', '.ogg', '.mov')):
+                video_files.append(file)
+
+    return render_template('video_gallery.html', videos=video_files)
     
 @app.route('/delete/<page>/<filename>', methods=['POST'])
 @login_required
@@ -529,7 +518,6 @@ def index():
 
 # localhost:5000/user/John
 @app.route('/user/<name>')
-
 def user(name):
     return render_template("user.html",user_name=name)
 
@@ -571,8 +559,16 @@ def test_pw():
         password = password,
         pw_to_check = pw_to_check,
         passed = passed,
-        form = form)
+        form = form) 
     
+@app.route('/chat', methods=['GET', 'POST'])
+@login_required
+def chat():
+    # Fetch recent chat messages (e.g., last 50 messages)
+    messages = ChatMessages.query.order_by(ChatMessages.timestamp.asc()).limit(50).all()
+    return render_template('chat.html', messages=messages)
+
+
 # Create Name Page
 @app.route('/name', methods=['GET', 'POST'])
 def name():
@@ -615,6 +611,17 @@ class Users(db.Model, UserMixin):
     # User Can Have Many Posts
     posts = db.relationship('Posts', backref='poster')
     
+    # Create Chat Message Model
+class ChatMessages(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.now)
+    sender = db.relationship('Users', backref='messages')
+
+    def __repr__(self):
+        return f'<ChatMessage {self.id} from {self.sender.username}>'
+    
     @property
     def password(self):
         raise AttributeError('password is not a readable attribute')
@@ -629,10 +636,40 @@ class Users(db.Model, UserMixin):
 # Create A String
     def __repr__(self):
         return '<Name %r>' % self.name
-    
+# SocketIO Event Handlers
+@socketio.on('connect')
+def handle_connect():
+    if current_user.is_authenticated:
+        print(f'User {current_user.username} connected')
+    else:
+        return False  # Prevent unauthenticated users from connecting
+
+@socketio.on('send_message')
+def handle_message(data):
+    if not current_user.is_authenticated:
+        return  # Ignore messages from unauthenticated users
+
+    message_text = data.get('message')
+    if message_text:
+        # Save message to database
+        new_message = ChatMessages(
+            sender_id=current_user.id,
+            message=message_text
+        )
+        db.session.add(new_message)
+        db.session.commit()
+
+        # Broadcast message to all connected clients
+        emit('receive_message', {
+            'username': current_user.username,
+            'message': message_text,
+            'timestamp': new_message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        }, broadcast=True) 
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+
+    #app.run(host='0.0.0.0', port=5000, debug=True)
     #app.run(host='0.0.0.0', port=5000)
     #app.run()
