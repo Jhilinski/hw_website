@@ -3,9 +3,13 @@
 <div class="container">
     <h2>Chat</h2>
     <div id="chat-container" style="border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll;">
-        {% for message in messages %}
-        <p><strong>{{ message.sender.username }}</strong> ({{ message.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}): {{ message.message }}</p>
-        {% endfor %}
+        {% if messages %}
+            {% for message in messages %}
+            <p><strong>{{ message.sender.username }}</strong> ({{ message.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}): {{ message.message }}</p>
+            {% endfor %}
+        {% else %}
+            <p>No messages found.</p>
+        {% endif %}
     </div>
     <form id="chat-form" style="margin-top: 10px;">
         <div class="input-group">
@@ -17,16 +21,12 @@
     </form>
 </div>
 
-<!-- Include Socket.IO client library -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
 <script>
     const socket = io();
-
-    // Scroll to the bottom of the chat container
     const chatContainer = document.getElementById('chat-container');
     chatContainer.scrollTop = chatContainer.scrollHeight;
 
-    // Handle form submission
     document.getElementById('chat-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const messageInput = document.getElementById('message-input');
@@ -37,8 +37,8 @@
         }
     });
 
-    // Handle receiving messages
     socket.on('receive_message', (data) => {
+        console.log('Received message:', data);  // Debug
         const messageElement = document.createElement('p');
         messageElement.innerHTML = `<strong>${data.username}</strong> (${data.timestamp}): ${data.message}`;
         chatContainer.appendChild(messageElement);

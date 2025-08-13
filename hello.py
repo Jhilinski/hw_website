@@ -21,21 +21,33 @@ app = Flask(__name__)
 ckeditor = CKEditor(app)
 socketio = SocketIO(app)  # Initialize Flask-SocketIO
 
-# New MySQL DB
-#app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:3221Redhook#@localhost/our_users'
+# New MySQL DBF
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:3221Redhook#@localhost/our_users'
 app.config['SECRET_KEY'] = "My Secret Key"
 app.config['UPLOAD_FOLDER_BASE'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static/uploads')
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'static/uploads/images')
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-VIDEO_FOLDER = os.path.join('static', 'Uploads', 'videos')
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'ogg', 'mov'}
+VIDEO_FOLDER = os.path.join('static', 'uploads', 'videos')
+ADMIN_USER_ID = 25
+# Page permissions: { 'page_name': [list_of_allowed_user_ids] }
+PAGE_PERMISSIONS = {
+    'adele': [25,17,18],
+    'videos': [25,17,18],
+    'crafts': [25,17,18],
+    'samantha': [25,17,18,19],
+    'philly': [25,17,18],
+	'redhook': [25,17,18]
+}
+admin_id =PAGE_PERMISSIONS
 
+if not os.path.exists(VIDEO_FOLDER):
+    os.makedirs(VIDEO_FOLDER)
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS   
+#BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+ 
+def allowed_video(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
     
 
 # Initialize The Database
@@ -221,7 +233,7 @@ def adele():
     image_folder = os.path.join(app.static_folder, 'uploads', 'adele')
     images = os.listdir(image_folder)
     images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
-    return render_template('adele.html', images=images)
+    return render_template('adele.html', images=images,admin_id=admin_id["adele"])
     
 
 @app.route('/crafts')
@@ -233,7 +245,7 @@ def crafts():
     image_folder = os.path.join(app.static_folder, 'uploads', 'crafts')
     images = os.listdir(image_folder)
     images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
-    return render_template('crafts.html', images=images)
+    return render_template('crafts.html', images=images,admin_id=admin_id["crafts"])
 
 @app.route('/samantha')
 def samantha():
@@ -244,7 +256,7 @@ def samantha():
     image_folder = os.path.join(app.static_folder, 'uploads', 'samantha')
     images = os.listdir(image_folder)
     images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
-    return render_template('samantha.html', images=images)
+    return render_template('samantha.html', images=images,admin_id=admin_id["samantha"])
 
 @app.route('/philly')
 def philly():
@@ -254,7 +266,7 @@ def philly():
     image_folder = os.path.join(app.static_folder, 'uploads', 'philly')
     images = os.listdir(image_folder)
     images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
-    return render_template('philly.html', images=images)
+    return render_template('philly.html', images=images,admin_id=admin_id["philly"])
 
 @app.route('/redhook')
 def redhook():
@@ -264,18 +276,58 @@ def redhook():
     image_folder = os.path.join(app.static_folder, 'uploads', 'redhook')
     images = os.listdir(image_folder)
     images = sorted(images, key=lambda x: os.path.getctime(os.path.join(image_folder, x)), reverse=True)
-    return render_template('redhook.html', images=images)
+    return render_template('redhook.html', images=images,admin_id=admin_id["redhook"])
 
-@app.route('/videos')
+    
+@app.route('/videos', methods=['GET', 'POST'])
 def video_gallery():
-    # Get list of video files in the folder
-    video_files = []
-    if os.path.exists(VIDEO_FOLDER):
-        for file in os.listdir(VIDEO_FOLDER):
-            if file.lower().endswith(('.mp4', '.webm', '.ogg', '.mov')):
-                video_files.append(file)
+    # If admin submits upload form
+    if request.method == 'POST':
+        #if not current_user.is_authenticated or current_user.id != ADMIN_USER_ID:
+            #flash("You are not authorized to upload videos.")
+            #return redirect(url_for('video_gallery'))
 
-    return render_template('video_gallery.html', videos=video_files)
+        if 'video' not in request.files:
+            flash('No video file part')
+            return redirect(request.url)
+
+        file = request.files['video']
+        if file.filename == '':
+            flash('No video selected')
+            return redirect(request.url)
+
+        if file and allowed_video(file.filename):
+            filepath = os.path.join(VIDEO_FOLDER, file.filename)
+            file.save(filepath)
+            flash(f'Video "{file.filename}" uploaded successfully!')
+            return redirect(url_for('video_gallery'))
+        else:
+            flash('Invalid file type. Allowed: mp4, webm, ogg, mov')
+            return redirect(request.url)
+
+    # List videos
+    video_files = sorted(
+        [f for f in os.listdir(VIDEO_FOLDER) if allowed_video(f)],
+        reverse=True
+    )
+
+    #return render_template('video_gallery.html', videos=video_files, admin_id=ADMIN_USER_ID)
+    return render_template('video_gallery.html', videos=video_files, admin_id=admin_id["videos"])
+
+@app.route('/delete_video/<filename>', methods=['POST'])
+@login_required
+def delete_video(filename):
+    #if current_user.id != ADMIN_USER_ID:
+        #flash("You are not authorized to delete videos.")
+        #return redirect(url_for('video_gallery'))
+
+    filepath = os.path.join(VIDEO_FOLDER, filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+        flash(f'Video "{filename}" deleted successfully!')
+    else:
+        flash(f'Video "{filename}" not found.')
+    return redirect(url_for('video_gallery'))
     
 @app.route('/delete/<page>/<filename>', methods=['POST'])
 @login_required
@@ -561,11 +613,18 @@ def test_pw():
         passed = passed,
         form = form) 
     
+#@app.route('/chat', methods=['GET', 'POST'])
+#@login_required
+#def chat():
+    # Fetch recent chat messages (e.g., last 50 messages)
+    #messages = ChatMessages.query.order_by(ChatMessages.timestamp.asc()).limit(50).all()
+    #return render_template('chat.html', messages=messages)
+    
 @app.route('/chat', methods=['GET', 'POST'])
 @login_required
 def chat():
-    # Fetch recent chat messages (e.g., last 50 messages)
     messages = ChatMessages.query.order_by(ChatMessages.timestamp.asc()).limit(50).all()
+    print("Retrieved messages:", [(m.id, m.sender.username, m.message, m.timestamp) for m in messages])  # Debug
     return render_template('chat.html', messages=messages)
 
 
@@ -643,7 +702,6 @@ def handle_connect():
         print(f'User {current_user.username} connected')
     else:
         return False  # Prevent unauthenticated users from connecting
-
 @socketio.on('send_message')
 def handle_message(data):
     if not current_user.is_authenticated:
@@ -651,24 +709,26 @@ def handle_message(data):
 
     message_text = data.get('message')
     if message_text:
-        # Save message to database
-        new_message = ChatMessages(
-            sender_id=current_user.id,
-            message=message_text
-        )
-        db.session.add(new_message)
-        db.session.commit()
+        try:
+            new_message = ChatMessages(
+                sender_id=current_user.id,
+                message=message_text
+            )
+            db.session.add(new_message)
+            db.session.commit()
+            print(f"Message saved: {message_text} by {current_user.username}")  # Debug
+            emit('receive_message', {
+                'username': current_user.username,
+                'message': message_text,
+                'timestamp': new_message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+            }, broadcast=True)
+        except Exception as e:
+            print(f"Error saving message: {e}")
+            db.session.rollback()
 
-        # Broadcast message to all connected clients
-        emit('receive_message', {
-            'username': current_user.username,
-            'message': message_text,
-            'timestamp': new_message.timestamp.strftime('%Y-%m-%d %H:%M:%S')
-        }, broadcast=True) 
 
-
-if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+#if __name__ == '__main__':
+    #socketio.run(app, host='0.0.0.0', port=5000, debug=True)
 
     #app.run(host='0.0.0.0', port=5000, debug=True)
     #app.run(host='0.0.0.0', port=5000)
